@@ -42,6 +42,7 @@ public class MainActivity extends Activity {
     private static final int MAX_HUE=65535;
     private boolean updated;
     private boolean run;
+    private boolean bridgeConnection;
     PHLight cur;
     private SDKListener listener;
 
@@ -56,15 +57,16 @@ public class MainActivity extends Activity {
         this.requestWindowFeature(Window.FEATURE_NO_TITLE);
         //Remove notification bar
         this.getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
-        LayoutInflater inflater = (LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-        View vi = inflater.inflate(R.layout.activity_main, null);
-        setContentView(vi);
+        //LayoutInflater inflater = (LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+        //View vi = inflater.inflate(R.layout.activity_main, null);
+        this.setContentView(R.layout.activity_main);
+
+        bridgeConnection = false;
 
         sdk = PHHueSDK.create();
+        //sdk.setSelectedBridge(null);
         listener = new SDKListener();
         sdk.getNotificationManager().registerSDKListener(listener);
-
-        sdk.setSelectedBridge(null);
 
         PHBridgeSearchManager sm = (PHBridgeSearchManager) sdk.getSDKService(PHHueSDK.SEARCH_BRIDGE);
         sm.search(true, true);
@@ -76,9 +78,9 @@ public class MainActivity extends Activity {
         //Populates UI on connection and during state change
         while(run) {
             updated = false;
-            PHBridge bridge = sdk.getSelectedBridge();
 
-            if(bridge != null) {
+            if(bridgeConnection) {
+                PHBridge bridge = sdk.getSelectedBridge();
                 List<PHLight> allLights = bridge.getResourceCache().getAllLights();
 
                 Iterator<PHLight> itr = allLights.iterator();
@@ -138,13 +140,16 @@ public class MainActivity extends Activity {
             // Handle your bridge search results here.  Typically if multiple results are returned you will want to display them in a list
             // and let the user select their bridge.   If one is found you may opt to connect automatically to that bridge.
 
-            List<PHBridge> bridges = accessPoint;
-            if(bridges.size() == 1) {
-                sdk.setSelectedBridge(bridges.get(0));
+            //List<PHBridge> bridges = accessPoint;
+            if(accessPoint.size() == 1) {
+                //sdk.setSelectedBridge(bridges.get(0));
+                sdk.connect((PHAccessPoint) accessPoint.get(0));
             } else {
                 // Manage what happens when there are multiple locations going
                 //Currently just chooses the first bridge
-                sdk.setSelectedBridge(bridges.get(0));
+
+                //sdk.setSelectedBridge(bridges.get(0));
+                sdk.connect((PHAccessPoint) accessPoint.get(0));
             }
         }
 
@@ -157,6 +162,7 @@ public class MainActivity extends Activity {
         public void onBridgeConnected(PHBridge b, String username) {
             sdk.setSelectedBridge(b);
             sdk.enableHeartbeat(b, PHHueSDK.HB_INTERVAL);
+            bridgeConnection = true;
             // Here it is recommended to set your connected bridge in your sdk object (as above) and start the heartbeat.
             // At this point you are connected to a bridge so you should pass control to your main program/activity.
             // The username is generated randomly by the bridge.

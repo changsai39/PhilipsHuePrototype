@@ -63,7 +63,7 @@ public class MainActivity extends Activity {
 
         bridgeConnection = false;
 
-        sdk = PHHueSDK.create();
+        sdk = PHHueSDK.getInstance();
         //sdk.setSelectedBridge(null);
         listener = new SDKListener();
         sdk.getNotificationManager().registerSDKListener(listener);
@@ -79,7 +79,7 @@ public class MainActivity extends Activity {
         while(run) {
             updated = false;
 
-            if(bridgeConnection) {
+            if(sdk.getSelectedBridge() != null) {
                 PHBridge bridge = sdk.getSelectedBridge();
                 List<PHLight> allLights = bridge.getResourceCache().getAllLights();
 

@@ -45,6 +45,7 @@ public class MainActivity extends Activity {
     private boolean bridgeConnection;
     PHLight cur;
     private SDKListener listener;
+    ScrollView buttons;
 
     /**
      * Creates a controller allowing for a change of state in individual lights
@@ -57,9 +58,9 @@ public class MainActivity extends Activity {
         this.requestWindowFeature(Window.FEATURE_NO_TITLE);
         //Remove notification bar
         this.getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
-        //LayoutInflater inflater = (LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-        //View vi = inflater.inflate(R.layout.activity_main, null);
-        this.setContentView(R.layout.activity_main);
+        LayoutInflater inflater = (LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+        View vi = inflater.inflate(R.layout.activity_main, null);
+        this.setContentView(vi);
 
         bridgeConnection = false;
 
@@ -76,10 +77,11 @@ public class MainActivity extends Activity {
 
 
         //Populates UI on connection and during state change
+        /*
         while(run) {
             updated = false;
 
-            if(sdk.getSelectedBridge() != null) {
+            if(updated) {
                 PHBridge bridge = sdk.getSelectedBridge();
                 List<PHLight> allLights = bridge.getResourceCache().getAllLights();
 
@@ -113,7 +115,7 @@ public class MainActivity extends Activity {
 
                 while (!updated) {}
             }
-        }
+        }*/
     }
 
     /**
@@ -163,10 +165,41 @@ public class MainActivity extends Activity {
             sdk.setSelectedBridge(b);
             sdk.enableHeartbeat(b, PHHueSDK.HB_INTERVAL);
             bridgeConnection = true;
+            updated = true;
             // Here it is recommended to set your connected bridge in your sdk object (as above) and start the heartbeat.
             // At this point you are connected to a bridge so you should pass control to your main program/activity.
             // The username is generated randomly by the bridge.
             // Also it is recommended you store the connected IP Address/ Username in your app here.  This will allow easy automatic connection on subsequent use.
+
+            List<PHLight> allLights = b.getResourceCache().getAllLights();
+
+            Iterator<PHLight> itr = allLights.iterator();
+
+            ScrollView buttons = (ScrollView) findViewById(R.id.buttons);
+            buttons.removeAllViews();
+
+            LinearLayout linearLayout = new LinearLayout(getApplicationContext());
+            linearLayout.setOrientation(LinearLayout.VERTICAL);
+
+            int i = 1;
+
+            while (itr.hasNext()) {
+                cur = itr.next();
+
+                Button button = new Button(getApplicationContext());
+                button.setText("Light " + i);
+                linearLayout.addView(button);
+
+                button.setOnClickListener(new View.OnClickListener() {
+                    public void onClick(View view) {
+                        changeLight(cur, new Random().nextInt(MAX_HUE));
+                    }
+                });
+
+                ++i;
+            }
+
+            buttons.addView(linearLayout);
         }
 
         @Override

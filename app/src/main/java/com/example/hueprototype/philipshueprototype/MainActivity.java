@@ -158,6 +158,37 @@ public class MainActivity extends Activity {
         @Override
         public void onCacheUpdated(List cacheNotificationsList, PHBridge bridge) {
             updated = true;
+
+
+            List<PHLight> allLights = bridge.getResourceCache().getAllLights();
+
+            Iterator<PHLight> itr = allLights.iterator();
+
+            ScrollView buttons = (ScrollView) findViewById(R.id.buttons);
+            buttons.removeAllViews();
+
+            LinearLayout linearLayout = new LinearLayout(getApplicationContext());
+            linearLayout.setOrientation(LinearLayout.VERTICAL);
+
+            int i = 1;
+
+            while (itr.hasNext()) {
+                cur = itr.next();
+
+                Button button = new Button(getApplicationContext());
+                button.setText("Light " + i);
+                linearLayout.addView(button);
+
+                button.setOnClickListener(new View.OnClickListener() {
+                    public void onClick(View view) {
+                        changeLight(cur, new Random().nextInt(MAX_HUE));
+                    }
+                });
+
+                ++i;
+            }
+
+            buttons.addView(linearLayout);
         }
 
         @Override

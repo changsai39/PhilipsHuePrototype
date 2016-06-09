@@ -9,6 +9,7 @@ import java.util.Random;
 import android.app.Activity;
 import android.content.Context;
 import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -61,6 +62,8 @@ public class MainActivity extends Activity {
         LayoutInflater inflater = (LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE);
         View vi = inflater.inflate(R.layout.activity_main, null);
         this.setContentView(vi);
+
+        buttons = (ScrollView) findViewById(R.id.buttons);
 
         bridgeConnection = false;
 
@@ -159,12 +162,14 @@ public class MainActivity extends Activity {
         public void onCacheUpdated(List cacheNotificationsList, PHBridge bridge) {
             updated = true;
 
+            sdk.setSelectedBridge(bridge);
+            sdk.enableHeartbeat(bridge, PHHueSDK.HB_INTERVAL);
 
             List<PHLight> allLights = bridge.getResourceCache().getAllLights();
 
             Iterator<PHLight> itr = allLights.iterator();
 
-            ScrollView buttons = (ScrollView) findViewById(R.id.buttons);
+
             buttons.removeAllViews();
 
             LinearLayout linearLayout = new LinearLayout(getApplicationContext());
@@ -180,8 +185,9 @@ public class MainActivity extends Activity {
                 linearLayout.addView(button);
 
                 button.setOnClickListener(new View.OnClickListener() {
+                    PHLight buttonLight = cur;
                     public void onClick(View view) {
-                        changeLight(cur, new Random().nextInt(MAX_HUE));
+                        changeLight(buttonLight, new Random().nextInt(MAX_HUE));
                     }
                 });
 
@@ -189,6 +195,7 @@ public class MainActivity extends Activity {
             }
 
             buttons.addView(linearLayout);
+            buttons.postInvalidate();
         }
 
         @Override
@@ -206,7 +213,8 @@ public class MainActivity extends Activity {
 
             Iterator<PHLight> itr = allLights.iterator();
 
-            ScrollView buttons = (ScrollView) findViewById(R.id.buttons);
+            buttons = (ScrollView) findViewById(R.id.buttons);
+            buttons.postInvalidate();
             buttons.removeAllViews();
 
             LinearLayout linearLayout = new LinearLayout(getApplicationContext());
@@ -221,16 +229,14 @@ public class MainActivity extends Activity {
                 button.setText("Light " + i);
                 linearLayout.addView(button);
 
-                button.setOnClickListener(new View.OnClickListener() {
-                    public void onClick(View view) {
-                        changeLight(cur, new Random().nextInt(MAX_HUE));
-                    }
-                });
+                button.setOnClickListener(new myClickListener(cur));
 
                 ++i;
             }
 
             buttons.addView(linearLayout);
+            buttons.postInvalidate();
+            //buttons.setLayoutParams((LinearLayout.LayoutParams) buttons.getLayoutParams());
         }
 
         @Override
@@ -273,6 +279,21 @@ public class MainActivity extends Activity {
             sdk.disconnect(bridge);
         }
         super.onDestroy();
+    }
+
+    class myClickListener implements OnClickListener {
+
+        private PHLight buttonLight;
+
+        public myClickListener(PHLight inLight) {
+            super();
+            buttonLight = inLight;
+        }
+
+        @Override
+        public void onClick(View v) {
+            changeLight(buttonLight, new Random().nextInt(MAX_HUE));
+        }
     }
 }
 

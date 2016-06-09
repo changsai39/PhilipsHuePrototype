@@ -26,5 +26,8 @@
         android:id="@+id/buttons"
         android:layout_below="@+id/textView"
         android:layout_centerHorizontal="true"
-        android:layout_marginTop="40dp" />
+        android:layout_marginTop="40dp" >
+
+    </ScrollView>
+
 </RelativeLayout>

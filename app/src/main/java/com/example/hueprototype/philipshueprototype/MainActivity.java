@@ -25,6 +25,7 @@ import com.philips.lighting.hue.listener.PHLightListener;
 import com.philips.lighting.hue.sdk.PHAccessPoint;
 import com.philips.lighting.hue.sdk.PHBridgeSearchManager;
 import com.philips.lighting.hue.sdk.PHHueSDK;
+import com.philips.lighting.hue.sdk.PHMessageType;
 import com.philips.lighting.hue.sdk.PHSDKListener;
 import com.philips.lighting.model.PHBridge;
 import com.philips.lighting.model.PHBridgeResource;
@@ -39,17 +40,19 @@ import com.philips.lighting.model.PHLightState;
  *
  */
 public class MainActivity extends Activity {
-    private PHHueSDK sdk;
-    private static final int MAX_HUE=65535;
-    private boolean updated;
-    private boolean run;
-    private boolean bridgeConnection;
-    PHLight cur;
-    private SDKListener listener;
-    ScrollView buttons;
+    private PHHueSDK sdk; //stores the current state of the connection
+    private static final int MAX_HUE=65535; //range of hues we can change the lights to
+    private boolean bridgeConnection; //true if connected to bridge false otherwise
+    private SDKListener listener; //listener to check PHHueSDK sdk's status
+    private Button[] buttonArray; //stores all buttons
+    private final int NUM_BUTTONS = 10; //maximum number of buttons and light connections allowed
+    private PHLight[] lightArray; //stores lights
 
     /**
      * Creates a controller allowing for a change of state in individual lights
+     *
+     * DIRECTIONS: start app then press and hold center button on bridge until app is connected. Buttons will populate app upon successful connection
+     *
      * @param savedInstanceState worthless variable in this version of the program
      */
     public void onCreate(Bundle savedInstanceState) {
@@ -61,12 +64,28 @@ public class MainActivity extends Activity {
         this.getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
         LayoutInflater inflater = (LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE);
         View vi = inflater.inflate(R.layout.activity_main, null);
-        this.setContentView(vi);
+        this.setContentView(vi); //sets custom view allowing gestures. We don't really use them in this app though
 
-        buttons = (ScrollView) findViewById(R.id.buttons);
+        //Sets up a dynamic number of buttons here
+        ScrollView buttons = (ScrollView) findViewById(R.id.buttons);
+        LinearLayout linearLayout = new LinearLayout(getApplicationContext());
+        linearLayout.setOrientation(LinearLayout.VERTICAL);
+        buttonArray = new Button[NUM_BUTTONS];
+
+        for(int i = 0; i < NUM_BUTTONS; i++) {
+
+            Button button = new Button(this);
+            button.setText("Light " + (i + 1));
+            button.setVisibility(View.INVISIBLE);
+            buttonArray[i] = button;
+            linearLayout.addView(button);
+        }
+
+        buttons.addView(linearLayout);
 
         bridgeConnection = false;
 
+        //Connects to the bridge here
         sdk = PHHueSDK.getInstance();
         //sdk.setSelectedBridge(null);
         listener = new SDKListener();
@@ -75,59 +94,41 @@ public class MainActivity extends Activity {
         PHBridgeSearchManager sm = (PHBridgeSearchManager) sdk.getSDKService(PHHueSDK.SEARCH_BRIDGE);
         sm.search(true, true);
 
-        run = true;
 
+        //Freezes app until successful connection to the bridge
+        //Important as the app will not render properly unless held at this point
+        while(!bridgeConnection) {}
 
-
-        //Populates UI on connection and during state change
-        /*
-        while(run) {
-            updated = false;
-
-            if(updated) {
-                PHBridge bridge = sdk.getSelectedBridge();
-                List<PHLight> allLights = bridge.getResourceCache().getAllLights();
-
-                Iterator<PHLight> itr = allLights.iterator();
-
-                ScrollView buttons = (ScrollView) findViewById(R.id.buttons);
-                buttons.removeAllViews();
-
-                LinearLayout linearLayout = new LinearLayout(this);
-                linearLayout.setOrientation(LinearLayout.VERTICAL);
-
-                int i = 1;
-
-                while (itr.hasNext()) {
-                    cur = itr.next();
-
-                    Button button = new Button(this);
-                    button.setText("Light " + i);
-                    linearLayout.addView(button);
-
-                    button.setOnClickListener(new View.OnClickListener() {
-                        public void onClick(View view) {
-                            changeLight(cur, new Random().nextInt(MAX_HUE));
-                        }
-                    });
-
-                    ++i;
-                }
-
-                buttons.addView(linearLayout);
-
-                while (!updated) {}
-            }
-        }*/
+        //Appropriate listeners set to buttons here
+        for(int i = 0; i < lightArray.length; i++) {
+            //buttonArray[i].setOnClickListener(new myClickListener(lightArray[i]));
+            buttonArray[i].setOnClickListener(new myClickListener(i));
+        }
     }
 
     /**
      * Changes the state of given light to the given hue
-     * @param light
-     * @param hue
+     * @param light the light we want to change
+     * @param hue desired color we want to change the light to
      */
     public void changeLight(PHLight light, int hue) {
         PHBridge bridge = sdk.getSelectedBridge();
+
+        PHLightState lightState = new PHLightState();
+        lightState.setHue(hue);
+        bridge.updateLightState(light, lightState);
+    }
+
+    /**
+     * Takes an integer and a color as an integer and changes a light from a list of lights
+     * @param i the index of the desired light
+     * @param hue the color to change selected light to
+     */
+    public void changeLight(int i, int hue) {
+        PHBridge bridge = sdk.getSelectedBridge();
+        List<PHLight> allLights = bridge.getResourceCache().getAllLights();
+
+        PHLight light = allLights.get(i);
 
         PHLightState lightState = new PHLightState();
         lightState.setHue(hue);
@@ -160,7 +161,16 @@ public class MainActivity extends Activity {
 
         @Override
         public void onCacheUpdated(List cacheNotificationsList, PHBridge bridge) {
-            updated = true;
+
+            // Here you receive notifications that the BridgeResource Cache was updated. Use the PHMessageType to
+            // check which cache was updated, e.g.
+            if (cacheNotificationsList.contains(PHMessageType.LIGHTS_CACHE_UPDATED)) {
+                System.out.println("Lights Cache Updated ");
+            }
+
+            //This part used to reset buttons and listeners, but it totally doesn't work because
+            //after onCreate finishes buttons and listeners seem to become immutable
+            /*
 
             sdk.setSelectedBridge(bridge);
             sdk.enableHeartbeat(bridge, PHHueSDK.HB_INTERVAL);
@@ -190,52 +200,44 @@ public class MainActivity extends Activity {
                         changeLight(buttonLight, new Random().nextInt(MAX_HUE));
                     }
                 });
-
                 ++i;
             }
 
             buttons.addView(linearLayout);
             buttons.postInvalidate();
+            */
         }
 
         @Override
         public void onBridgeConnected(PHBridge b, String username) {
+            //Sets bridge and heartbeat
             sdk.setSelectedBridge(b);
             sdk.enableHeartbeat(b, PHHueSDK.HB_INTERVAL);
-            bridgeConnection = true;
-            updated = true;
             // Here it is recommended to set your connected bridge in your sdk object (as above) and start the heartbeat.
             // At this point you are connected to a bridge so you should pass control to your main program/activity.
             // The username is generated randomly by the bridge.
             // Also it is recommended you store the connected IP Address/ Username in your app here.  This will allow easy automatic connection on subsequent use.
 
+            //creates an array of lights and sets appropriate buttons to visible
             List<PHLight> allLights = b.getResourceCache().getAllLights();
-
             Iterator<PHLight> itr = allLights.iterator();
+            lightArray = new PHLight[allLights.size()];
 
-            buttons = (ScrollView) findViewById(R.id.buttons);
-            buttons.postInvalidate();
-            buttons.removeAllViews();
-
-            LinearLayout linearLayout = new LinearLayout(getApplicationContext());
-            linearLayout.setOrientation(LinearLayout.VERTICAL);
-
-            int i = 1;
+            int i = 0;
 
             while (itr.hasNext()) {
-                cur = itr.next();
+                PHLight cur = itr.next();
 
-                Button button = new Button(getApplicationContext());
-                button.setText("Light " + i);
-                linearLayout.addView(button);
-
-                button.setOnClickListener(new myClickListener(cur));
-
+                //Button button = new Button(getApplicationContext());
+                //button.setText("Light " + i);
+                lightArray[i] = cur;
+                buttonArray[i].setVisibility(View.VISIBLE);
+                //buttonArray[i].setOnClickListener(new myClickListener(cur));
                 ++i;
             }
 
-            buttons.addView(linearLayout);
-            buttons.postInvalidate();
+            //Allows the end of the onCreate loop and for the app to start
+            bridgeConnection = true;
             //buttons.setLayoutParams((LinearLayout.LayoutParams) buttons.getLayoutParams());
         }
 
@@ -267,6 +269,7 @@ public class MainActivity extends Activity {
         }
     };
 
+    //disconnects from bridge and stops heartbeat here
     @Override
     protected void onDestroy() {
         PHBridge bridge = sdk.getSelectedBridge();
@@ -281,19 +284,30 @@ public class MainActivity extends Activity {
         super.onDestroy();
     }
 
+    //Custom button click listener allowing for lights to be assigned
     class myClickListener implements OnClickListener {
 
-        private PHLight buttonLight;
+        private PHLight buttonLight; //assigned light
+        private int i; //index of assigned light
 
+        //Creates a listener assigned to given light
         public myClickListener(PHLight inLight) {
             super();
             buttonLight = inLight;
         }
 
-        @Override
-        public void onClick(View v) {
-            changeLight(buttonLight, new Random().nextInt(MAX_HUE));
+        //Creates a listener assigned to given index of a lgiht
+        public myClickListener(int i) {
+            this.i = i;
         }
+
+        //onClick with lights assigned to buttons. commented out to make this program closer to the QuickStartApp
+        //@Override
+        //public void onClick(View v) { changeLight(buttonLight, new Random().nextInt(MAX_HUE)); }
+
+        //onClick where buttons are assigned to an index
+        @Override
+        public void onClick(View v) { changeLight(i, new Random().nextInt(MAX_HUE)); }
     }
 }
 

@@ -47,6 +47,7 @@ public class MainActivity extends Activity {
     private Button[] buttonArray; //stores all buttons
     private final int NUM_BUTTONS = 10; //maximum number of buttons and light connections allowed
     private PHLight[] lightArray; //stores lights
+    private int effectState;
 
     /**
      * Creates a controller allowing for a change of state in individual lights
@@ -65,6 +66,8 @@ public class MainActivity extends Activity {
         LayoutInflater inflater = (LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE);
         View vi = inflater.inflate(R.layout.activity_main, null);
         this.setContentView(vi); //sets custom view allowing gestures. We don't really use them in this app though
+
+        effectState = 0;
 
         //Sets up a dynamic number of buttons here
         ScrollView buttons = (ScrollView) findViewById(R.id.buttons);
@@ -102,8 +105,46 @@ public class MainActivity extends Activity {
         //Appropriate listeners set to buttons here
         for(int i = 0; i < lightArray.length; i++) {
             //buttonArray[i].setOnClickListener(new myClickListener(lightArray[i]));
-            buttonArray[i].setOnClickListener(new myClickListener(i));
+            buttonArray[i].setOnClickListener(new myClickListener(lightArray[i]));
         }
+
+        //Add listeners to buttons allowing different effects
+        ((Button) findViewById(R.id.effect1)).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                effectState = 0;
+            }
+        });
+
+        ((Button) findViewById(R.id.effect2)).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                effectState = 1;
+            }
+        });
+
+        ((Button) findViewById(R.id.effect3)).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                blinker();
+            }
+        });
+
+        ((Button) findViewById(R.id.effect4)).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                shuffle();
+            }
+        });
+
+        /*
+        ((Button) findViewById(R.id.effect5)).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                shuffleAll();
+            }
+        });
+        */
     }
 
     /**
@@ -116,6 +157,7 @@ public class MainActivity extends Activity {
 
         PHLightState lightState = new PHLightState();
         lightState.setHue(hue);
+        lightState.setTransitionTime(0);
         bridge.updateLightState(light, lightState);
     }
 
@@ -132,6 +174,7 @@ public class MainActivity extends Activity {
 
         PHLightState lightState = new PHLightState();
         lightState.setHue(hue);
+        lightState.setTransitionTime(0);
         bridge.updateLightState(light, lightState);
     }
 
@@ -296,18 +339,134 @@ public class MainActivity extends Activity {
             buttonLight = inLight;
         }
 
+        /*
         //Creates a listener assigned to given index of a lgiht
         public myClickListener(int i) {
             this.i = i;
         }
+        */
 
         //onClick with lights assigned to buttons. commented out to make this program closer to the QuickStartApp
-        //@Override
-        //public void onClick(View v) { changeLight(buttonLight, new Random().nextInt(MAX_HUE)); }
+        @Override
+        public void onClick(View v) {
+            if(effectState == 0) {
+                changeLight(buttonLight, new Random().nextInt(MAX_HUE));
+            } else if(effectState == 1) {
+                rainbow(buttonLight);
+            } else {
+                blinker();
+            }
+        }
 
         //onClick where buttons are assigned to an index
-        @Override
-        public void onClick(View v) { changeLight(i, new Random().nextInt(MAX_HUE)); }
+        //@Override
+        //public void onClick(View v) { changeLight(i, new Random().nextInt(MAX_HUE)); }
     }
+
+    public void rainbow(PHLight light) {
+        PHBridge bridge = sdk.getSelectedBridge();
+
+        List<PHLight> allLights = bridge.getResourceCache().getAllLights();
+        Random rand = new Random();
+
+        for (int i = 0; i <= 65000; i += 3000) {
+            PHLightState lightState = new PHLightState();
+            //lightState.setTransitionTime(0); //we probably want a bit of transition time here
+            lightState.setHue(i);
+            bridge.updateLightState(light, lightState);
+            try {
+                Thread.sleep(100);                 //1000 milliseconds is one second.
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+
+    public void blinker() {
+        PHBridge bridge = sdk.getSelectedBridge();
+
+        List<PHLight> allLights = bridge.getResourceCache().getAllLights();
+        PHLightState lightState = new PHLightState();
+        lightState.setTransitionTime(0);
+
+        int oneHundred = 0;
+
+        while (oneHundred < 10){
+
+            for (PHLight light : allLights) {
+                lightState.setOn(false);
+                bridge.updateLightState(light, lightState);
+            }
+
+            try {
+                Thread.sleep(500);                 //1000 milliseconds is one second.
+            } catch(InterruptedException ex) {
+                Thread.currentThread().interrupt();
+            }
+
+
+            for (PHLight light : allLights) {
+                lightState.setOn(true);
+                bridge.updateLightState(light, lightState);
+            }
+
+            try {
+                Thread.sleep(500);                 //1000 milliseconds is one second.
+            } catch(InterruptedException ex) {
+                Thread.currentThread().interrupt();
+            }
+
+            oneHundred++;
+
+        }
+    }
+
+    public void shuffle() {
+        PHBridge bridge = sdk.getSelectedBridge();
+
+        List<PHLight> allLights = bridge.getResourceCache().getAllLights();
+        PHLightState lightState = new PHLightState();
+        lightState.setTransitionTime(0);
+
+        int hue = allLights.get(0).getLastKnownLightState().getHue();
+
+        for(int i = 1; i < allLights.size() * 50; i++) {
+            lightState.setHue(hue);
+            hue = allLights.get((i % allLights.size())).getLastKnownLightState().getHue();
+            bridge.updateLightState(allLights.get(i % allLights.size()), lightState);
+
+            try {
+                Thread.sleep(100);                 //1000 milliseconds is one second.
+            } catch(InterruptedException ex) {
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+
+    /*
+    public void shuffleAll() {
+        PHBridge bridge = sdk.getSelectedBridge();
+
+        List<PHLight> allLights = bridge.getResourceCache().getAllLights();
+        PHLightState lightState = new PHLightState();
+        lightState.setTransitionTime(0);
+
+
+
+        for(int j = 0; j < 75; j++) {
+            int hue = allLights.get(allLights.size() - 1).getLastKnownLightState().getHue();
+            for (int i = 0; i < allLights.size(); i++) {
+                lightState.setHue(hue);
+                hue = allLights.get(i).getLastKnownLightState().getHue();
+                bridge.updateLightState(allLights.get(i), lightState);
+            }
+            try {
+                Thread.sleep(100);                 //1000 milliseconds is one second.
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+    */
 }
 

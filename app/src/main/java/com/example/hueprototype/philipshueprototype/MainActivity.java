@@ -47,7 +47,8 @@ public class MainActivity extends Activity {
     private Button[] buttonArray; //stores all buttons
     private final int NUM_BUTTONS = 10; //maximum number of buttons and light connections allowed
     private PHLight[] lightArray; //stores lights
-    private int effectState;
+    private int effectState; //current selected state
+    private boolean lightSwitch; //true for on false for off
 
     /**
      * Creates a controller allowing for a change of state in individual lights
@@ -68,6 +69,7 @@ public class MainActivity extends Activity {
         this.setContentView(vi); //sets custom view allowing gestures. We don't really use them in this app though
 
         effectState = 0;
+        lightSwitch = true;
 
         //Sets up a dynamic number of buttons here
         ScrollView buttons = (ScrollView) findViewById(R.id.buttons);
@@ -134,6 +136,13 @@ public class MainActivity extends Activity {
             @Override
             public void onClick(View v) {
                 shuffle();
+            }
+        });
+
+        ((Button) findViewById(R.id.switchlightbutton)).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                switchLights();
             }
         });
 
@@ -441,6 +450,47 @@ public class MainActivity extends Activity {
                 Thread.currentThread().interrupt();
             }
         }
+    }
+
+    public void allOff() {
+        PHBridge bridge = sdk.getSelectedBridge();
+
+        List<PHLight> allLights = bridge.getResourceCache().getAllLights();
+        PHLightState lightState = new PHLightState();
+        lightState.setTransitionTime(0);
+
+        int hue = allLights.get(0).getLastKnownLightState().getHue();
+
+        for(int i = 1; i < allLights.size() * 50; i++) {
+            lightState.setHue(hue);
+            hue = allLights.get((i % allLights.size())).getLastKnownLightState().getHue();
+            bridge.updateLightState(allLights.get(i % allLights.size()), lightState);
+
+            try {
+                Thread.sleep(100);                 //1000 milliseconds is one second.
+            } catch(InterruptedException ex) {
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+
+    public void switchLights() {
+        PHBridge bridge = sdk.getSelectedBridge();
+
+        List<PHLight> allLights = bridge.getResourceCache().getAllLights();
+        PHLightState lightState = new PHLightState();
+        lightState.setTransitionTime(0);
+        lightState.setOn(!lightSwitch);
+
+        for(PHLight light : allLights) {
+            bridge.updateLightState(light, lightState);
+            try {
+                Thread.sleep(100);                 //1000 milliseconds is one second.
+            } catch(InterruptedException ex) {
+                Thread.currentThread().interrupt();
+            }
+        }
+        lightSwitch = !lightSwitch;
     }
 
     /*

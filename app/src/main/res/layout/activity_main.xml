@@ -64,4 +64,13 @@
         android:layout_above="@+id/effect2"
         android:layout_centerHorizontal="true" />
 
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Switch"
+        android:id="@+id/switchlightbutton"
+        android:layout_alignTop="@+id/buttons"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentEnd="true" />
+
 </RelativeLayout>
